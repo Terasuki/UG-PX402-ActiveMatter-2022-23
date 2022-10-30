@@ -1,5 +1,5 @@
 """
-Week 4
+Week 5
 
 Ray Hu & Xietao
 """
@@ -10,28 +10,37 @@ import random
 
 """
 Parameters.
-numberOfRods: the number of rods + motors. done
-length: the length of the rods, enter a matrix of size equal to the number of rods. done
-seed: seed used to generate motor position. done
-seqUpdate: 0 is for top to bottom, 1 for bottom to top, 2 is (uniformly) self-avoiding random, 3 for (uniformly) completely random.
+numberOfRods: the number of rods, also the number of motors.
+length: the length of the rods, enter a matrix of size equal to the number of rods.
+velocity_d: diffusion velocity.
+velocity_p: persistence velocity.
+seed: seed used to generate motor position.
+makeAnimation: set True if you want simulation animated, set False to skip.
+seqUpdate: 0 for top to bottom, 1 for bottom to top, 
+2 is (uniformly) self-avoiding random, 3 for (uniformly) completely random. Default is 0.
 diffSampling: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
 persSample: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
-finalTime: number of timesteps to be considered. done
-recordTime: number of timesteps before each recording. done
+finalTime: number of timesteps to be considered.
+recordTime: number of timesteps before each recording.
+motors: motors initial condition w.r.t the rods, enter the full matrix.
 """
 
-numberOfRods = 200
+numberOfRods = 21
 length = np.ones(numberOfRods)
+velocity_d = 0.01
+velocity_p = 0.01
 seed = 1
-seqUpdate = 1
+makeAnimation = True
+# Don't change these
+np.random.seed(seed)
+random.seed(seed)
+# ----
+seqUpdate = 2
 diffSampling = 0
-persSample = 2
+persSample = 0
 finalTime = 400
 recordTime = 2
-
-motors = np.zeros((numberOfRods, 2))
-rods = np.zeros((numberOfRods, 2))
-np.random.seed(seed)
+motors = np.random.rand(numberOfRods, 2)
 
 def RodsArray(Rposition, Mposition, length, numberOfRods):
 
@@ -138,6 +147,55 @@ def randwalk_shuffle_v_D(numberofsteps, Rposition, Mposition, numberOfRods, perv
 
     return Rposition, Mposition
 
+def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvelo):
+    # random walk with velocity v_d and directional movement with v_p 
+    v_p = pervelo
+    v_d = diffvelo
+    for _ in range(0, numberofsteps): 
+        order = list(range(0, -numberOfRods, -1))
+        if seqUpdate == 2:
+            random.shuffle(order)
+        elif seqUpdate == 1:
+            order = list(range(0, numberOfRods, 1))
+        elif seqUpdate == 3:
+            order = random.choices(order, k=numberOfRods)
+        for i in order: # for each motor
+            dice1 = np.random.uniform(0,1)
+            if diffSampling == 0:
+                pass
+            elif diffSampling == 1:
+                v_d *= random.uniform(0,1)
+            if persSample == 0:
+                pass
+            elif persSample == 1:
+                v_p *= random.unform(0,1)
+
+            if dice1 < 0.5 : #random walk to the right
+                Mposition[i, 0] += v_p + v_d
+                if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1] or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d) or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d)):
+                    Mposition[i, 0] -= v_p + v_d
+            elif dice1 > 0.5 :#random walk to the left
+                Mposition[i, 0] += v_p - v_d
+                if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1] or Mposition[i, 0] - abs(v_p - v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p - v_d) or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d)):
+                    Mposition[i, 0] -= v_p - v_d
+            else:
+                pass
+            
+            dice2 = np.random.uniform(0,1)
+            if dice2 < 0.5 :#random walk to the right
+                Mposition[i, 1] += -v_p + v_d
+                if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1] or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d) or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d)):
+                    Mposition[i, 1] -= -v_p + v_d
+            elif dice2 > 0.5 :#random walk to the left
+                Mposition[i, 1] += -v_p - v_d
+                if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1] or Mposition[i + 1, 0] - abs(-v_p - v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p - v_d) or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d)):
+                    Mposition[i, 1] -= -v_p - v_d
+            else:
+                pass
+        Rposition[1:, 0] = (Mposition[:-1, 0] - Mposition[:-1, 1]).cumsum()
+
+    return Rposition, Mposition
+
 def calculateMotorPositions(RodsMatrix, MotorMatrix, numberOfMotors):
 
     motorPositions = np.zeros(numberOfMotors)
@@ -160,6 +218,7 @@ def systemLength(RodsMatrix, numberOfMotors):
 def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, recordTime, plotEvol):
     
     finalLength = np.zeros(numberOfSimulations)
+    allLengths = np.zeros((numberOfSimulations, int(finalTime/recordTime)))
     seeds = [None]*numberOfSimulations
     for simul, seed in enumerate(np.random.choice(1000000, numberOfSimulations, replace=False)):
         seeds[simul] = np.random.default_rng(seed=seed)
@@ -181,8 +240,9 @@ def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, re
             print(f'Currently {simul}/{numberOfSimulations}')
 
         finalLength[simul] = lengthArray[-1]
+        allLengths[simul] = lengthArray
 
-    return finalLength
+    return finalLength, allLengths
 
 def plotMotorPositions(rods, motors, numberOfRods):
 
@@ -221,28 +281,23 @@ def plotLengthEvolution(lengths):
     plt.ylabel('Rod length')
     #plt.show()
 
-motors = np.random.rand(numberOfRods, 2)
-#motors = np.zeros((numberOfRods, 2))
-#motors[:,1] = np.random.rand(numberOfRods)
-#motors[:,0] = np.zeros(numberOfRods)
+rods = np.zeros((numberOfRods, 2))
 rods = RodsArray(rods, motors, length, numberOfRods)
-#plotSystem(rods, motors, numberOfRods, 10)
 lengthArray = np.zeros(int(finalTime/recordTime))
-lengthArray1 = np.zeros(int(finalTime/recordTime))
 
 for tstep in range(0, int(finalTime/recordTime)):
 
-    rods, motors = randwalk_shuffle(recordTime, rods, motors, numberOfRods, 0.01, 0.01)
-    #rods1, motors1 = randwalk2(recordTime, rods, motors, numberOfRods, 0.01, 0.01)
-    lengthArray[tstep] = systemLength(rods, numberOfRods)
-    #lengthArray1[tstep] = systemLength(rods1, numberOfRods) + 0.1
-    #plotSystem(rods, motors, numberOfRods, 10)
-    #plotMotorPositions(rods, motors, numberOfRods)
+    rods, motors = randwalk(recordTime, rods, motors, numberOfRods, velocity_d, velocity_p)
+    #lengthArray[tstep] = systemLength(rods, numberOfRods)
+    if makeAnimation == True:
+        plotSystem(rods, motors, numberOfRods, 10)
 
 #plotLengthEvolution(lengthArray)
-#plotLengthEvolution(lengthArray1)
-np.savetxt('length.dat', multipleSimulations(2000, length, numberOfRods, finalTime, recordTime, False))
-plt.show()
+#lengthFinal, lengths = multipleSimulations(2000, length, numberOfRods, finalTime, recordTime, False)
+#plt.show()
 
+# Save to files, use graphs jupyter notebook to plot these
 np.savetxt('rods.dat', rods)
 np.savetxt('motors.dat', motors)
+#np.savetxt('length_final.dat', lengthFinal)
+#np.savetxt('length_all.dat', lengths)
