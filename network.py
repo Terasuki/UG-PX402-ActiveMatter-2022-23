@@ -16,23 +16,26 @@ velocity_d: diffusion velocity.
 velocity_p: persistence velocity.
 seed: seed used to generate motor position.
 makeAnimation: set True if you want simulation animated, set False to skip.
+repeatedSystems: set True for multiple simulations with different seed.
+numberOfRepetitions: if repeatedSystems is True, then set here the number of desired simualations.
 seqUpdate: 0 for top to bottom, 1 for bottom to top, 
 2 is (uniformly) self-avoiding random, 3 for (uniformly) completely random. Default is 0.
 diffSampling: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
 persSample: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
+allowMotorCrossing: set True to allow motor crossing.
 finalTime: number of timesteps to be considered.
 recordTime: number of timesteps before each recording.
 motors: motors initial condition w.r.t the rods, enter the full matrix.
 """
 
-numberOfRods = 21
+numberOfRods = 23
 length = np.ones(numberOfRods)
 velocity_d = 0.01
-velocity_p = 0.0001
+velocity_p = 0.01
 seed = 1
-makeAnimation = False
-repeatedSystems = True
-numberOfRepetitions = 200
+makeAnimation = True
+repeatedSystems = False
+numberOfRepetitions = 2000
 # Don't change these
 np.random.seed(seed)
 random.seed(seed)
@@ -40,8 +43,9 @@ random.seed(seed)
 seqUpdate = 2
 diffSampling = 0
 persSample = 0
-finalTime = 80000
-recordTime = 200
+allowMotorCrossing = True
+finalTime = 400
+recordTime = 2
 motors = np.random.rand(numberOfRods, 2)
 
 def RodsArray(Rposition, Mposition, length, numberOfRods):
@@ -62,7 +66,7 @@ def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvel
         if seqUpdate == 2:
             random.shuffle(order)
         elif seqUpdate == 1:
-            order = list(range(0, numberOfRods, 1))
+            order.reverse()
         elif seqUpdate == 3:
             order = random.choices(order, k=numberOfRods)
         for i in order: # for each motor
@@ -74,28 +78,44 @@ def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvel
             if persSample == 0:
                 pass
             elif persSample == 1:
-                v_p *= random.unform(0,1)
+                v_p *= random.uniform(0,1)
 
             if dice1 < 0.5 : #random walk to the right
                 Mposition[i, 0] += v_p + v_d
-                if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1] or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d) or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d)):
-                    Mposition[i, 0] -= v_p + v_d
+                if allowMotorCrossing:
+                    if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1]):
+                        Mposition[i, 0] -= v_p + v_d
+                else:
+                    if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1] or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d) or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d)):
+                        Mposition[i, 0] -= v_p + v_d
             elif dice1 > 0.5 :#random walk to the left
                 Mposition[i, 0] += v_p - v_d
-                if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1] or Mposition[i, 0] - abs(v_p - v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p - v_d) or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d)):
-                    Mposition[i, 0] -= v_p - v_d
+                if allowMotorCrossing:
+                    if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1]):
+                        Mposition[i, 0] -= v_p - v_d
+                else:
+                    if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1] or Mposition[i, 0] - abs(v_p - v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p - v_d) or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d)):
+                        Mposition[i, 0] -= v_p - v_d
             else:
                 pass
             
             dice2 = np.random.uniform(0,1)
             if dice2 < 0.5 :#random walk to the right
                 Mposition[i, 1] += -v_p + v_d
-                if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1] or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d) or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d)):
-                    Mposition[i, 1] -= -v_p + v_d
+                if allowMotorCrossing:
+                    if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1]):
+                        Mposition[i, 1] -= -v_p + v_d
+                else:
+                    if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1] or Mposition[i + 1, 0] - abs(-v_p + v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p + v_d) or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d)):
+                        Mposition[i, 1] -= -v_p + v_d
             elif dice2 > 0.5 :#random walk to the left
                 Mposition[i, 1] += -v_p - v_d
-                if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1] or Mposition[i + 1, 0] - abs(-v_p - v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p - v_d) or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d)):
-                    Mposition[i, 1] -= -v_p - v_d
+                if allowMotorCrossing:
+                    if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1]):
+                        Mposition[i, 1] -= -v_p - v_d
+                else:
+                    if (0 >= Mposition[i, 1] or  Mposition[i, 1] >= Rposition[i, 1] or Mposition[i + 1, 0] - abs(-v_p - v_d) <= Mposition[i, 1] <= Mposition[i + 1, 0] + abs(-v_p - v_d) or Mposition[i, 0] - abs(v_p + v_d) <= Mposition[i - 1, 1] <= Mposition[i, 0] + abs(v_p + v_d)):
+                        Mposition[i, 1] -= -v_p - v_d
             else:
                 pass
         Rposition[1:, 0] = (Mposition[:-1, 0] - Mposition[:-1, 1]).cumsum()
@@ -150,15 +170,6 @@ def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, re
 
     return finalLength, allLengths
 
-def plotMotorPositions(rods, motors, numberOfRods):
-
-    plt.clf()
-    motorsPos = calculateMotorPositions(rods, motors, numberOfRods)
-    plt.hist(motorsPos)
-    plt.xlabel('x coordinate')
-    plt.ylabel('number of motors')
-    plt.pause(0.1)
-
 def plotSystem(RodsMatrix, MotorsMatrix, numberOfRods, gridPoints):
 
     motorPos = calculateMotorPositions(RodsMatrix, MotorsMatrix, numberOfRods)
@@ -198,6 +209,7 @@ for tstep in range(0, int(finalTime/recordTime)):
     if makeAnimation == True:
         plotSystem(rods, motors, numberOfRods, 10)
 
+plt.show()
 plotLengthEvolution(lengthArray)
 if repeatedSystems == True:
     lengthFinal, lengths = multipleSimulations(numberOfRepetitions, length, numberOfRods, finalTime, recordTime, False)
