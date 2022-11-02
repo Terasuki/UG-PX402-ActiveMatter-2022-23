@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+rods.dat
+motors.dat
+length_final.dat
+length_all.dat
