@@ -1,7 +1,7 @@
 """
-Week 8
+Week 10
 
-Ray Hu & Xietao
+Ray & Xietao
 """
 
 import numpy as np
@@ -22,19 +22,21 @@ seqUpdate: 0 for top to bottom, 1 for bottom to top,
 2 is (uniformly) self-avoiding random, 3 for (uniformly) completely random. Default is 0.
 diffSampling: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
 persSample: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
+activeSystem: set True for active persistance speed, set False for drift in one direction.
 allowMotorCrossing: set True to allow motor crossing.
-finalTime: number of timesteps to be considered.
+finalTime: number of timesteps to be considered. (in ns/2)
 recordTime: number of timesteps before each recording. (in ns)
+rangeOfDetection: if activeSystem is True then this is the radius of detection for the system. (in nm)
 motors: motors initial condition w.r.t the rods, enter the full matrix.
 """
 
 numberOfRods = 201
 length = np.ones(numberOfRods)*1000
-velocity_d = 10
+velocity_d = 0.01
 velocity_p = 1
 seed = 1
 makeAnimation = False
-repeatedSystems = False
+repeatedSystems = True
 numberOfRepetitions = 50
 # Don't change these
 np.random.seed(seed)
@@ -43,9 +45,11 @@ random.seed(seed)
 seqUpdate = 2
 diffSampling = 1
 persSample = 1
-allowMotorCrossing = True
-finalTime = 8000
+activeSystem = False
+allowMotorCrossing = False
+finalTime = 1500
 recordTime = 2
+rangeOfDetection = 3000
 motors = np.random.rand(numberOfRods, 2)*1000
 
 def RodsArray(Rposition, Mposition, length, numberOfRods):
@@ -85,6 +89,19 @@ def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvel
                 v_p *= random.uniform(0,1)*2
             elif persSample == 2:
                 v_p = abs(np.random.normal(0, v_p))
+            if  activeSystem:
+                Mpositiontot = Rposition[:, 0] + Mposition[:, 0]
+                Relativeposition = Mpositiontot[i] - Mpositiontot
+                #print(Relativeposition)
+                Left_number = np.where((Relativeposition < rangeOfDetection) & (Relativeposition > 0))[0]
+                Right_number = np.where((Relativeposition >-rangeOfDetection) & (Relativeposition < 0))[0]
+                #print(len(Right_number))
+                if len(Left_number) >= len(Right_number):
+                    v_p = v_p
+                elif len(Left_number) < len(Right_number):
+                    v_p = - v_p
+                else:
+                    v_p = 0
 
             if dice1 < 0.5 : #random walk to the right
                 Mposition[i, 0] += v_p + v_d
@@ -162,7 +179,7 @@ def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, re
     "Execute simulations."
     for simul in range(0, numberOfSimulations):
         rods = np.zeros((numberOfRods, 2))
-        motors = seeds[simul].random((numberOfRods, 2))
+        motors = seeds[simul].random((numberOfRods, 2))*length[0]
         rods = RodsArray(rods, motors, length, numberOfRods)
 
         for tstep in range(0, int(finalTime/recordTime)):
@@ -173,7 +190,7 @@ def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, re
             plt.title('Rod length evolution')
             plt.xlabel('Time step')
             plt.ylabel('Rod length')
-        if simul % 100 == 0:
+        if simul % 5 == 0:
             print(f'Currently {simul}/{numberOfSimulations}')
 
         finalLength[simul] = lengthArray[-1]
@@ -251,14 +268,14 @@ if repeatedSystems == True:
     np.savetxt('length_all.dat', lengths)
     np.savetxt('motors_multiple.dat', motors_all)
 
-
-y = multipleSimulsSame(1, 4, 40, finalTime, recordTime, 990, rods, motors)
-x = np.linspace(0.1, 4, 40)
+"""
+y = multipleSimulsSame(0, 20, 80, finalTime, recordTime, 990, rods, motors)
+x = np.linspace(0.1, 20, 80)
 
 plt.scatter(x, y)
 plt.title('Varying v_d')
 plt.xlabel('v_d')
 plt.ylabel('amount of motors with x > 990')
 plt.show()
-np.savetxt('v_d_change.dat', y)
-
+np.savetxt('v_p_change.dat', y)
+"""
