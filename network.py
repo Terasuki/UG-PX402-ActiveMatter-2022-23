@@ -1,12 +1,21 @@
 """
-Week 10
+Term 2 Week 1
 
-Ray & Xietao
+Authors: Ray & Xietao
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import time
+import os
+import json
+
+# Folder to save results. Set to 0 for same workspace.
+folder_path = 0
+# Obtain current time to automatically save different results
+unix_time = time.time()
+print(f'Current time: {unix_time}')
 
 """
 Parameters.
@@ -32,11 +41,11 @@ motors: motors initial condition w.r.t the rods, enter the full matrix.
 
 numberOfRods = 201
 length = np.ones(numberOfRods)*1000
-velocity_d = 0.01
+velocity_d = 20
 velocity_p = 1
 seed = 1
 makeAnimation = False
-repeatedSystems = True
+repeatedSystems = False
 numberOfRepetitions = 50
 # Don't change these
 np.random.seed(seed)
@@ -46,11 +55,27 @@ seqUpdate = 2
 diffSampling = 1
 persSample = 1
 activeSystem = False
-allowMotorCrossing = False
-finalTime = 1500
+allowMotorCrossing = True
+finalTime = 4000
 recordTime = 2
 rangeOfDetection = 3000
 motors = np.random.rand(numberOfRods, 2)*1000
+
+# Format parameters
+parameters = {
+    "vp": velocity_p,
+    "vd": velocity_d,
+    "seed": seed,
+    "seqUpdate": seqUpdate,
+    "diffSampling": diffSampling,
+    "persSampling": persSample,
+    "active": activeSystem,
+    "allowCrossing": allowMotorCrossing,
+    "finalTime": finalTime,
+    "recordTime": recordTime,
+    "rangeOfDetection": rangeOfDetection,
+    "motors": "random"
+}
 
 def RodsArray(Rposition, Mposition, length, numberOfRods):
 
@@ -260,15 +285,29 @@ if repeatedSystems == True:
     lengthFinal, lengths, motors_all = multipleSimulations(numberOfRepetitions, length, numberOfRods, finalTime, recordTime, False)
 plt.show()
 
+# Create folder for copies
+if folder_path == 0:
+    folder_path = os.getcwd()
+folder = os.path.join(folder_path, str(unix_time))
+os.mkdir(folder)
 # Save to files, use graphs jupyter notebook to plot these
 np.savetxt('rods.dat', rods)
 np.savetxt('motors.dat', motors)
+# --- Copy
+with open(f'{folder}\\parameters.json', 'w') as fp:
+    json.dump(parameters, fp)
+np.savetxt(f'{folder}\\rods-{unix_time}.dat', rods)
+np.savetxt(f'{folder}\\motors-{unix_time}.dat', motors)
 if repeatedSystems == True:
     np.savetxt('length_final.dat', lengthFinal)
     np.savetxt('length_all.dat', lengths)
     np.savetxt('motors_multiple.dat', motors_all)
+    # --- Copy
+    np.savetxt(f'{folder}\\length_final-{unix_time}.dat', lengthFinal)
+    np.savetxt(f'{folder}\\length_all-{unix_time}.dat', lengths)
+    np.savetxt(f'{folder}\\motors_multiple-{unix_time}.dat', motors_all)
 
-"""
+
 y = multipleSimulsSame(0, 20, 80, finalTime, recordTime, 990, rods, motors)
 x = np.linspace(0.1, 20, 80)
 
@@ -278,4 +317,3 @@ plt.xlabel('v_d')
 plt.ylabel('amount of motors with x > 990')
 plt.show()
 np.savetxt('v_p_change.dat', y)
-"""
