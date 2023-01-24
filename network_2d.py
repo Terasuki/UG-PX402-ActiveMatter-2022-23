@@ -6,53 +6,51 @@ import os
 import json
 
 """
-Term 2 Week 1
+Term 2 Week 3
 
 Authors: Ray & Xietao
-"""
-"""
+
 Parameters.
+n_cols: number of columns in the lattice.
+n_rows: number of rows in the lattice.
+length: length of the rods.
 velocity_d: diffusion velocity. (in nm/ns)
 velocity_p: persistence velocity. (in nm/ns)
 seed: seed used to generate motor position.
 makeAnimation: set True if you want simulation animated, set False to skip.
-repeatedSystems: set True for multiple simulations with different seed.
-numberOfRepetitions: if repeatedSystems is True, then set here the number of desired simualations.
-seqUpdate: 0 for top to bottom, 1 for bottom to top, 
-2 is (uniformly) self-avoiding random, 3 for (uniformly) completely random. Default is 0.
-diffSampling: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
-persSample: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
-allowMotorCrossing: set True to allow motor crossing.
-finalTime: number of timesteps to be considered. (in ns/2)
+finalTime: number of timesteps to be considered. (in ns)
 recordTime: number of timesteps before each recording. (in ns)
-motors: motors initial condition w.r.t the rods, enter the full matrix.
+motor_scale: initial position of the motors in each rod (in nm)
+threshold: insert here a number from (0, 1) for reduced connectivity.
+ratio: mass of rod/mass of motor
 """
 
-n_cols = 3
-n_rows = 3
+n_cols = 15
+n_rows = 15
 length = 1000
-velocity_d = 0
-velocity_p = 100
+velocity_d = 10
+velocity_p = 1
 seed = 1
 makeAnimation = False
-seqUpdate = 2
-diffSampling = 1
-persSample = 1
-allowMotorCrossing = True
-finalTime = 4000
-recordTime = 2
+finalTime = 1000
+recordTime = 1
+motor_scale = 350
+threshold = -1
+ratio = 3
+relatives = False
 
 # Format parameters
 parameters = {
+    "n_cols": n_cols,
+    "n_rows": n_rows,
+    "length": length,
     "vp": velocity_p,
     "vd": velocity_d,
     "seed": seed,
-    "seqUpdate": seqUpdate,
-    "diffSampling": diffSampling,
-    "persSampling": persSample,
-    "allowCrossing": allowMotorCrossing,
     "finalTime": finalTime,
     "recordTime": recordTime,
+    "motor_scale": motor_scale,
+    "threshold": threshold
 }
 
 # Folder to save results. Set to 0 for same workspace.
@@ -128,8 +126,8 @@ class Rod:
         
         
             else:
-                movable_length = self.length - fixed_motor_distance
-                self.polarisation = moved_motor_pos - fixed_motor_pos
+                movable_length = fixed_motor_distance
+                self.polarisation = -moved_motor_pos + fixed_motor_pos
                 self.polarisation = self.polarisation / np.linalg.norm(self.polarisation)
                 #self.length = np.linalg.norm(fixed_motor_pos - moved_motor_pos)
                 self.pluspos = fixed_motor_pos - (self.polarisation * movable_length)
@@ -170,6 +168,12 @@ class Motor:
     
     def get_v_d(self):
         return self.v_d
+    
+    def get_relative_pos(self):
+        relative_pos = np.zeros(len(self.connected_rods))
+        for i, rod in enumerate(self.connected_rods):
+            relative_pos[i] = np.linalg.norm(rod.pluspos - self.position)
+        return relative_pos
 
 def generate_lattice_network(n, m, rod_length):
     rods = dict()
@@ -177,19 +181,25 @@ def generate_lattice_network(n, m, rod_length):
     for i in range(n):
         for j in range(m):
             if i<n+1 and j<m+1:
-                motors[(i*m)+j] = Motor(np.multiply((i, j), rod_length/2), velocity_p, velocity_d)
+                motors[(i*m)+j] = Motor(np.multiply((i, j), motor_scale), velocity_p, velocity_d)
     for i in range(n):
         for j in range(m):
-            if  i < n - 1 :
-                rods[((i*m)+j, (i*m + m)+j)] = Rod(rod_length, (1,0), np.multiply((i,j), rod_length/2), motors[(i*m)+j], motors[(i*m + m)+j])
-            if  j < m - 1:
-                rods[((i*m)+j, (i*m)+j + 1)] = Rod(rod_length, (0,1), np.multiply((i,j), rod_length/2), motors[(i*m)+j ], motors[((i*m)+j) + 1])
+            if  i < n - 1 and np.random.random() > threshold:
+                rods[((i*m)+j, (i*m + m)+j)] = Rod(rod_length, (1,0), np.multiply((i,j), motor_scale), motors[(i*m)+j], motors[(i*m + m)+j])
+            if  j < m - 1 and np.random.random() > threshold:
+                rods[((i*m)+j, (i*m)+j + 1)] = Rod(rod_length, (0,1), np.multiply((i,j), motor_scale), motors[(i*m)+j ], motors[((i*m)+j) + 1])
             
     return rods, motors
 
 def movement(rods,motors, n, m):
-    for i in range(n):
-        for j in range(m):
+    Rann = list(range(n))
+    random.shuffle(Rann)
+    Ranm = list(range(m))
+    random.shuffle(Ranm)
+    #print(Rann)
+    
+    for i in Rann:
+        for j in Ranm:
             motor = motors[i*m + j]
             if ((i*m)+j) < (n*m) and ((i*m + m)+j) < (n*m) and ((i*m)+j, (i*m + m)+j) in rods:
                 rod1 = rods[(i*m)+j,(i*m + m)+j]
@@ -209,15 +219,31 @@ def movement(rods,motors, n, m):
                     rod.reconnect(motor)
 
 
-    return rods, motors       
+    return rods, motors     
             
 def simulate(rods,motors, n, m, timesteps):
-    for _ in range(timesteps):
-        movement(rods,motors, n, m)
-        for motor in range(n*m):
-            motors[motor].connected_rods = []
+    for timestep in range(timesteps):
+        movement(rods, motors, n, m)
+        if relatives and not timestep == timesteps-1:
+            for motor in range(n*m):
+                motors[motor].connected_rods = []
+        else:
+            for motor in range(n*m):
+                motors[motor].connected_rods = []
         
     return rods, motors
+
+def drawArrow(A, B):
+    plt.arrow(A[0], A[1], B[0] - A[0], B[1] - A[1], head_width=30, length_includes_head=True)
+
+def center_of_mass(rods, motors, ratio):
+    com = np.zeros(2)
+    total_mass = (len(motors.values())+ ratio * len(rods.values()))
+    for rod in rods.values():
+        com += ratio * 0.5 *(rod.get_pluspos() + rod.get_minuspos())/total_mass
+    for motor in motors.values():
+        com += motor.get_position()/total_mass  
+    return com
 
 # Create folder for saving data.
 if folder_path == 0:
@@ -230,22 +256,53 @@ with open(f'{folder}\\parameters.json', 'w') as fp:
     json.dump(parameters, fp)
 
 rods, motors = generate_lattice_network(n_cols, n_rows, length)
-
-for timestep in range(1):
-
-    plt.clf()
-    rods, motors = simulate(rods, motors, n_cols, n_rows, 1)
-
+com_over_time = np.zeros((finalTime, 2))
+start_time = time.time()
+for timestep in range(finalTime):
+    if timestep % 100 == 0:
+        print(f'Current step: {timestep}/{finalTime}')
+    rods, motors = simulate(rods, motors, n_cols, n_rows, recordTime)
+    com_over_time[timestep] = center_of_mass(rods, motors, ratio)
+    if not makeAnimation:
+        continue
+    
     # Draw the rods
     for rod in rods.values():
-        xpos = np.array([rod.get_pluspos()[0], rod.get_minuspos()[0]])
-        ypos = np.array([rod.get_pluspos()[1], rod.get_minuspos()[1]])
-        plt.plot(xpos, ypos, marker='>')
+        drawArrow(rod.get_pluspos(), rod.get_minuspos())
 
     # Draw the motors
     for motor in motors.values():
-        plt.scatter(motor.get_position()[0], motor.get_position()[1])
-    plt.scatter(0, 0, label=timestep)
+        plt.scatter(motor.get_position()[0], motor.get_position()[1])  
+    plt.scatter(0, 0, label=timestep, marker='x')
     plt.legend()
     plt.pause(0.1)
+    plt.clf()
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f'Time elapsed: {elapsed_time} seconds.')
+
 plt.show()
+
+plt.plot(np.linspace(0, finalTime, finalTime), com_over_time)
+plt.show()
+
+# Save CoM over time
+np.savetxt('com.dat', com_over_time)
+np.savetxt(f'{folder}\\com-{unix_time}.dat', com_over_time)
+
+# Save final positions of motors.
+motors_pos = np.ones((len(list(motors.values())), 2))
+for i, motor in enumerate(list(motors.values())):
+    motors_pos[i] = motor.position
+np.savetxt('motors.dat', motors_pos)
+np.savetxt(f'{folder}\\motors-{unix_time}.dat', motors_pos)
+
+# This is a simulation for ONLY relative positions.
+if relatives:
+    rods, motors = generate_lattice_network(n_cols, n_rows, length)
+    relatives = np.array([])
+    simulate(rods, motors, n_cols, n_rows, 4000)
+    for i, motor in enumerate(list(motors.values())):
+        relatives = np.hstack((relatives, motor.get_relative_pos()))
+    np.savetxt('relatives.dat', relatives)
+    np.savetxt(f'{folder}\\relatives-{unix_time}.dat', relatives)
