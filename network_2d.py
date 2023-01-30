@@ -29,17 +29,19 @@ scaling: set to True to change if you want simulations with varying motor_scale.
 """
 
 def main(run_id):
+
     n_cols = 4
     n_rows = 4
     length = 1000
-    velocity_d = 10
-    velocity_p = 9.99
-    seed = 3
+    velocity_d = 1
+    velocity_p = 1 + run_id/100
+    seed = 1
     makeAnimation = False
-    finalTime = 4000
+    finalTime = 6000
     recordTime = 1
-    motor_scale = 400
+    motor_scale = 500
     threshold = -1
+    polarity = 0
     ratio = 3
     relatives = False
     scaling = False
@@ -58,11 +60,8 @@ def main(run_id):
         "threshold": threshold
     }
 
-    # Folder to save results. Set to 0 for same workspace.
-    folder_path = 0
-
-    # Obtain current time to automatically save different results
-    unix_time = round(time.time()) + run_id
+    # Obtain current time to automatically save different results, might bug for >1000 runs
+    unix_time = round(time.time()) + run_id/1000
     print(f'Current time: {unix_time}')
 
     # Initialise seeds
@@ -174,7 +173,7 @@ def main(run_id):
                 relative_pos[i] = np.linalg.norm(rod.pluspos - self.position)
             return relative_pos
 
-    def generate_lattice_network(n, m, rod_length, motor_scale):
+    def generate_lattice_network(n, m, rod_length, motor_scale, threshold, polar):
         rods = dict()
         motors = dict()
         for i in range(n):
@@ -183,10 +182,16 @@ def main(run_id):
                     motors[(i*m)+j] = Motor(np.multiply((i, j), motor_scale), velocity_p, velocity_d)
         for i in range(n):
             for j in range(m):
-                if  i < n - 1 and np.random.random() > threshold:
-                    rods[((i*m)+j, (i*m + m)+j)] = Rod(rod_length, (1,0), np.multiply((i,j), motor_scale), motors[(i*m)+j], motors[(i*m + m)+j])
-                if  j < m - 1 and np.random.random() > threshold:
-                    rods[((i*m)+j, (i*m)+j + 1)] = Rod(rod_length, (0,1), np.multiply((i,j), motor_scale), motors[(i*m)+j ], motors[((i*m)+j) + 1])
+                dice_1 = np.random.random()
+                dice_2 = np.random.random()
+                if  i < n-1 and np.random.random() > threshold and dice_1 > polar:
+                    rods[((i*m)+j, (i*m + m)+j)] = Rod(rod_length, (1,0), np.multiply((i - 0.5,j), motor_scale), motors[(i*m)+j], motors[(i*m + m)+j])
+                elif i < n-1   and np.random.random() > threshold and dice_1 < polar:
+                    rods[((i*m)+j, (i*m + m)+j)] = Rod(rod_length, (-1,0), np.multiply((i + 1.5,j), motor_scale), motors[(i*m + m)+j], motors[(i*m)+j])
+                if  j < m - 1 and np.random.random() > threshold and dice_2 > polar:
+                    rods[((i*m)+j, (i*m)+j + 1)] = Rod(rod_length, (0,1), np.multiply((i,j - 0.5), motor_scale), motors[(i*m)+j], motors[((i*m)+j) + 1])
+                elif j < m - 1  and np.random.random() > threshold and dice_2 < polar:
+                    rods[((i*m)+j, (i*m)+j + 1)] = Rod(rod_length, (0,-1), np.multiply((i,j + 1.5), motor_scale), motors[(i*m)+j+1], motors[((i*m)+j)])
                 
         return rods, motors
 
@@ -227,11 +232,10 @@ def main(run_id):
         return rods, motors
     
     def simulate_last(rods, motors, n, m, timesteps):
-        for timestep in range(timesteps):
+        for _ in range(timesteps):
+            for motor in range(n*m):
+                motors[motor].connected_rods = []
             rods, motors = movement(rods, motors, n, m)
-            if not timestep == range(timesteps)[-1] and timesteps > 1:
-                for motor in range(n*m):
-                    motors[motor].connected_rods = []
             
         return rods, motors
 
@@ -248,8 +252,7 @@ def main(run_id):
         return com
 
     # Create folder for saving data.
-    if folder_path == 0:
-        folder_path = os.getcwd()
+    folder_path = os.getcwd()
     folder = os.path.join(folder_path, str(unix_time))
     os.mkdir(folder)
 
@@ -259,7 +262,7 @@ def main(run_id):
 
     # This is a simulation for ONLY relative positions.
     if relatives:
-        rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale)
+        rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale, threshold, polarity)
         relatives = np.array([])
         simulate_last(rods, motors, n_cols, n_rows, finalTime)
         for i, motor in enumerate(list(motors.values())):
@@ -270,12 +273,12 @@ def main(run_id):
         return relatives
     
     elif scaling:
-        rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale/(run_id+1))
+        rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale/(run_id+1), threshold, polarity)
         simulate(rods, motors, n_cols, n_rows, finalTime)
         return center_of_mass(rods, motors, ratio)
     
     else:
-        rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale)
+        rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale, threshold, polarity)
         com_over_time = np.zeros((finalTime, 2))
         start_time = time.time()
         for timestep in range(finalTime):
@@ -320,7 +323,7 @@ def main(run_id):
         np.savetxt('motors.dat', motors_pos)
         np.savetxt(f'{folder}\\motors-{unix_time}.dat', motors_pos)
 
-        return motors_pos
+        return center_of_mass(rods, motors, ratio)
 
 if __name__=='__main__':
     
@@ -333,4 +336,4 @@ if __name__=='__main__':
     elapsed = end-start
     y = np.mean(np.array(x), axis=0)
     print(f'Total time elapsed: {elapsed} seconds.')
-    np.savetxt('multiple.dat', y)
+    np.savetxt('multiple.dat', x)
