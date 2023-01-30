@@ -218,8 +218,8 @@ def main(run_id):
                     motor.add_rod(rod4)
                 motor.move()
                 for rod in motor.connected_rods:
-                    if rod in rods.values():
-                        rod.reconnect(motor)
+                    #if rod in rods.values():
+                    rod.reconnect(motor)
 
         return rods, motors     
                 
