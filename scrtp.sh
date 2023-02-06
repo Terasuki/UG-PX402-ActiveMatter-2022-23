@@ -1,6 +1,12 @@
 #!/bin/bash
 workdir=$(pwd)
 
+echo $workdir
+
+job=`printf "$workdir/sim.sh"`
+py=`printf "$workdir/sim.py"`
+echo $py
+
 cat > ${py} << EOD
 #!/usr/bin/env python
 # coding: utf-8
@@ -227,28 +233,28 @@ def main(run_id, folder, parameters):
         rods, motors = simulate(rods, motors, n_cols, n_rows, recordTime)
         com_over_time[timestep] = center_of_mass(rods, motors, ratio)
 
-    with open(f'{folder}\\com-all.dat', 'a') as f:
+    with open(f'{folder}/com-all.dat', 'a') as f:
         for row in range(finalTime):
             f.write(f'{com_over_time[row][0]} {com_over_time[row][1]}\n')
 
 if __name__=='__main__':
     
     n_runs = 2
-
-    with open('parameters.json') as json_file:
-        parameters = json.load(json_file)
     
     # Obtain current time to automatically save results
     unix_time = round(time.time())
     print(f'Current time: {unix_time}')
 
     # Create folder for saving data.
-    folder_path = $workdir
+    folder_path = '$workdir'
     folder = os.path.join(folder_path, str(unix_time))
     os.mkdir(folder)
 
+    with open(f'{folder_path}/parameters.json') as json_file:
+        parameters = json.load(json_file)
+    
     # Dump parameters
-    with open(f'{folder}\\parameters.json', 'w') as fp:
+    with open(f'{folder}/parameters.json', 'w') as fp:
         json.dump(parameters, fp)
 
     start = time.time()
@@ -270,7 +276,7 @@ cat > ${job} << EOD
 #SBATCH --mem-per-cpu=2000mb
 #SBATCH --time=01:00:00
 module purge
-module load Ananconda3
+module load Anaconda3
 srun $py
 EOD
 
