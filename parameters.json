@@ -1,0 +1,12 @@
+{"n_cols": 3,
+ "n_rows": 3,
+ "length": 1000,
+ "vp": 1, 
+ "vd": 1, 
+ "seed": 1, 
+ "finalTime": 4000, 
+ "recordTime": 1, 
+ "motor_scale": 50, 
+ "threshold": -1, 
+ "ratio": 3, 
+ "polarity": 0}
