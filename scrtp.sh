@@ -239,12 +239,12 @@ def main(run_id, folder, parameters):
 
 if __name__=='__main__':
     
-    n_runs = 2
-    
     # Obtain current time to automatically save results
     unix_time = round(time.time())
     print(f'Current time: {unix_time}')
 
+    n_runs = parameters["n_runs"]
+    
     # Create folder for saving data.
     folder_path = '$workdir'
     folder = os.path.join(folder_path, str(unix_time))
