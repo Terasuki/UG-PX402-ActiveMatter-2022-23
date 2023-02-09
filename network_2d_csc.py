@@ -225,11 +225,11 @@ def main(run_id, folder, parameters):
             f.write(f'{com_over_time[row][0]} {com_over_time[row][1]}\n')
 
 if __name__=='__main__':
-    
-    n_runs = 2
 
     with open('parameters.json') as json_file:
         parameters = json.load(json_file)
+    
+    n_runs = parameters["n_runs"]
     
     # Obtain current time to automatically save results
     unix_time = round(time.time())

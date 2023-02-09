@@ -7,7 +7,7 @@ import json
 from multiprocessing import Pool
 
 """
-Term 2 Week 3
+Term 2 Week 4
 
 Authors: Ray & Xietao
 
@@ -21,7 +21,7 @@ seed: seed used to generate motor position.
 makeAnimation: set True if you want simulation animated, set False to skip.
 finalTime: number of timesteps to be considered. (in ns)
 recordTime: number of timesteps before each recording. (in ns)
-motor_scale: initial position of the motors in each rod. (in nm)
+motor_scale: initial position of the motors in each rod. Any value from [1 to 666.7) (in nm) 
 threshold: insert here a number from (0, 1) for reduced connectivity.
 ratio: mass of rod/mass of motor.
 relatives: set to True to change simulations to record relative positions instead. (TAKES PRIORITY)
@@ -30,16 +30,16 @@ scaling: set to True to change if you want simulations with varying motor_scale.
 
 def main(run_id):
 
-    n_cols = 4
-    n_rows = 4
+    n_cols = 3
+    n_rows = 3
     length = 1000
     velocity_d = 1
-    velocity_p = 1 + run_id/100
+    velocity_p = 1
     seed = 1
     makeAnimation = False
-    finalTime = 6000
+    finalTime = 8000
     recordTime = 1
-    motor_scale = 500
+    motor_scale = 50
     threshold = -1
     polarity = 0
     ratio = 3
@@ -57,7 +57,9 @@ def main(run_id):
         "finalTime": finalTime,
         "recordTime": recordTime,
         "motor_scale": motor_scale,
-        "threshold": threshold
+        "threshold": threshold,
+        "ratio": ratio,
+        "polarity": polarity
     }
 
     # Obtain current time to automatically save different results, might bug for >1000 runs
@@ -65,8 +67,8 @@ def main(run_id):
     print(f'Current time: {unix_time}')
 
     # Initialise seeds
-    np.random.seed(seed*run_id)
-    random.seed(seed*run_id)
+    np.random.seed(seed*(run_id+1))
+    random.seed(seed*(run_id+1))
 
     class Rod:
         def __init__(self, length, polarisation, pluspos, motor1, motor2):
@@ -220,7 +222,6 @@ def main(run_id):
                 for rod in motor.connected_rods:
                     #if rod in rods.values():
                     rod.reconnect(motor)
-
         return rods, motors     
                 
     def simulate(rods, motors, n, m, timesteps):
@@ -288,7 +289,7 @@ def main(run_id):
             com_over_time[timestep] = center_of_mass(rods, motors, ratio)
             if not makeAnimation:
                 continue
-            
+            plt.clf()
             # Draw CoM
             plt.scatter(com_over_time[timestep][0], com_over_time[timestep][1], marker='d')
 
@@ -302,7 +303,7 @@ def main(run_id):
             plt.scatter(0, 0, label=timestep, marker='x')
             plt.legend()
             plt.pause(0.01)
-            plt.clf()
+
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f'Time elapsed: {elapsed_time} seconds.')

@@ -41,12 +41,12 @@ motors: motors initial condition w.r.t the rods, enter the full matrix.
 
 numberOfRods = 201
 length = np.ones(numberOfRods)*1000
-velocity_d = 20
-velocity_p = 1
+velocity_d = 10
+velocity_p = 2
 seed = 1
 makeAnimation = False
 repeatedSystems = False
-numberOfRepetitions = 50
+numberOfRepetitions = 1
 # Don't change these
 np.random.seed(seed)
 random.seed(seed)
@@ -268,19 +268,41 @@ def plotLengthEvolution(lengths):
     plt.ylabel('Rod length (nm)')
     #plt.show()
 
+def plotCom(com):
+
+    plt.plot(np.linspace(0, com.size, com.size), com)
+    plt.title('Center of mass evolution')
+    plt.xlabel('Time step (ns)')
+    plt.ylabel('Center of mass position (nm)')
+    #plt.show()
+
+def center_of_mass(rods, motors, ratio, numberOfRods):
+        com = 0
+        motorPos = calculateMotorPositions(rods, motors, numberOfRods)
+        total_mass = numberOfRods + ratio*numberOfRods
+        for i in range(numberOfRods):
+            com += ratio * 0.5 *(rods[i, 0] + (rods[i, 0]+rods[i, 1]))/total_mass
+            com += motorPos[i]/total_mass 
+        return com
+
 rods = np.zeros((numberOfRods, 2))
 rods = RodsArray(rods, motors, length, numberOfRods)
 lengthArray = np.zeros(int(finalTime/recordTime))
+comArray = np.zeros(int(finalTime/recordTime))
 
+start = time.time()
 for tstep in range(0, int(finalTime/recordTime)):
 
     rods, motors = randwalk(recordTime, rods, motors, numberOfRods, velocity_p, velocity_d)
     lengthArray[tstep] = systemLength(rods, numberOfRods)
+    comArray[tstep] = center_of_mass(rods, motors, 3, numberOfRods)
     if makeAnimation == True:
         plotSystem(rods, motors, numberOfRods, 10)
-
+end = time.time()
+print(end-start)
 plt.show()
-plotLengthEvolution(lengthArray)
+#plotLengthEvolution(lengthArray)
+plotCom(comArray)
 if repeatedSystems == True:
     lengthFinal, lengths, motors_all = multipleSimulations(numberOfRepetitions, length, numberOfRods, finalTime, recordTime, False)
 plt.show()
@@ -307,7 +329,7 @@ if repeatedSystems == True:
     np.savetxt(f'{folder}\\length_all-{unix_time}.dat', lengths)
     np.savetxt(f'{folder}\\motors_multiple-{unix_time}.dat', motors_all)
 
-
+"""
 y = multipleSimulsSame(0, 20, 80, finalTime, recordTime, 990, rods, motors)
 x = np.linspace(0.1, 20, 80)
 
@@ -317,3 +339,4 @@ plt.xlabel('v_d')
 plt.ylabel('amount of motors with x > 990')
 plt.show()
 np.savetxt('v_p_change.dat', y)
+"""

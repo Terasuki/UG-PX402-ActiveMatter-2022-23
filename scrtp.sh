@@ -242,8 +242,6 @@ if __name__=='__main__':
     # Obtain current time to automatically save results
     unix_time = round(time.time())
     print(f'Current time: {unix_time}')
-
-    n_runs = parameters["n_runs"]
     
     # Create folder for saving data.
     folder_path = '$workdir'
@@ -256,6 +254,8 @@ if __name__=='__main__':
     # Dump parameters
     with open(f'{folder}/parameters.json', 'w') as fp:
         json.dump(parameters, fp)
+    
+    n_runs = parameters["n_runs"]
 
     start = time.time()
     for run in range(n_runs):
