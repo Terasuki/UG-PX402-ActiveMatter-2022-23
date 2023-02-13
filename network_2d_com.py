@@ -244,6 +244,9 @@ if __name__=='__main__':
     with open(f'{folder}\\parameters.json', 'w') as fp:
         json.dump(parameters, fp)
 
+    for keys, par in parameters.items():
+        print(f'{keys}: {par}')
+    
     start = time.time()
     for run in range(n_runs):
         if run % 10 == 0:
