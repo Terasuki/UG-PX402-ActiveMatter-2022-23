@@ -18,7 +18,7 @@ import os
 import json
 
 """
-Term 2 Week 5
+Term 2 Week 6
 
 Authors: Ray & Xietao
 
@@ -29,7 +29,6 @@ length: length of the rods.
 velocity_d: diffusion velocity. (in nm/ns)
 velocity_p: persistence velocity. (in nm/ns)
 seed: seed used to generate motor position.
-makeAnimation: set True if you want simulation animated, set False to skip.
 finalTime: number of timesteps to be considered. (in ns)
 recordTime: number of timesteps before each recording. (in ns)
 motor_scale: initial position of the motors in each rod. Any value from [1 to 666.7) (in nm) 
@@ -256,6 +255,9 @@ if __name__=='__main__':
         json.dump(parameters, fp)
     
     n_runs = parameters["n_runs"]
+
+    for keys, par in parameters.items():
+        print(f'{keys}: {par}')
 
     start = time.time()
     for run in range(n_runs):
