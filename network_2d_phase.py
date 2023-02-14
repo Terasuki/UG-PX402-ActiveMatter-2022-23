@@ -215,6 +215,8 @@ def main(run_id, d_vp, d_vd, folder, parameters):
     
     com_final = np.zeros((n_toAvg, 2))
     for run in range(n_toAvg):
+        np.random.seed(seed*(run_id+1)+321*(run+1))
+        random.seed(seed*(run_id+1)+321*(run+1))
         rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale, threshold, polarity)
         for _ in range(finalTime):
             rods, motors = simulate(rods, motors, n_cols, n_rows, recordTime)

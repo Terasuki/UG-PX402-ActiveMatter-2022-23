@@ -228,6 +228,8 @@ def main(run_id, d_vp, d_vd, folder, parameters):
     
     com_final = np.zeros((n_toAvg, 2))
     for run in range(n_toAvg):
+        np.random.seed(seed*(run_id+1)+321*(run+1))
+        random.seed(seed*(run_id+1)+321*(run+1))
         rods, motors = generate_lattice_network(n_cols, n_rows, length, motor_scale, threshold, polarity)
         for _ in range(finalTime):
             rods, motors = simulate(rods, motors, n_cols, n_rows, recordTime)
@@ -252,7 +254,7 @@ if __name__=='__main__':
     print(f'Current time: {unix_time}')
 
     # Create folder for saving data.
-    folder_path = $workdir
+    folder_path = '$workdir'
     folder = os.path.join(folder_path, str(unix_time))
     os.mkdir(folder)
 
@@ -280,7 +282,7 @@ cat > ${job} << EOD
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=2000mb
-#SBATCH --time=01:00:00
+#SBATCH --time=06:00:00
 module purge
 module load Anaconda3
 srun $py
