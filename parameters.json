@@ -1,4 +1,4 @@
-{"n_runs": 2,
+{"n_runs": 3,
  "n_cols": 3,
  "n_rows": 3,
  "length": 1000,
@@ -7,7 +7,8 @@
  "seed": 1, 
  "finalTime": 4000, 
  "recordTime": 1, 
- "motor_scale": 50, 
+ "motor_scale": 500, 
  "threshold": -1, 
- "ratio": 3, 
- "polarity": 0}
+ "ratio": 0, 
+ "polarity": 0,
+ "L": 500}
