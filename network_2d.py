@@ -36,13 +36,13 @@ def main(run_id):
     velocity_d = 1
     velocity_p = 1
     seed = 1
-    makeAnimation = False
+    makeAnimation = True
     finalTime = 8000
     recordTime = 1
-    motor_scale = 50
+    motor_scale = 500
     threshold = -1
     polarity = 0
-    ratio = 3
+    ratio = 0
     relatives = False
     scaling = False
 
@@ -286,7 +286,7 @@ def main(run_id):
             if timestep % 100 == 0:
                 print(f'Current step: {timestep}/{finalTime}')
             rods, motors = simulate(rods, motors, n_cols, n_rows, recordTime)
-            com_over_time[timestep] = center_of_mass(rods, motors, ratio)
+            com_over_time[timestep] = center_of_mass(rods, motors, ratio)-500
             if not makeAnimation:
                 continue
             plt.clf()
@@ -297,6 +297,7 @@ def main(run_id):
             for rod in rods.values():
                 drawArrow(rod.get_pluspos(), rod.get_minuspos())
 
+            plt.axvline(x = 500, color = 'b', label = 'axvline - full height')
             # Draw the motors
             for motor in motors.values():
                 plt.scatter(motor.get_position()[0], motor.get_position()[1])  
@@ -327,14 +328,34 @@ def main(run_id):
         return center_of_mass(rods, motors, ratio)
 
 if __name__=='__main__':
+
+    with open('parameters.json') as json_file:
+        parameters = json.load(json_file)
     
     n_runs = 1
-    n_cores = 8
+    
+    # Obtain current time to automatically save results
+    unix_time = round(time.time())
+    print(f'Current time: {unix_time}')
+
+    # Create folder for saving data.
+    folder_path = os.getcwd()
+    folder = os.path.join(folder_path, str(unix_time))
+    os.mkdir(folder)
+
+    # Dump parameters
+    with open(f'{folder}\\parameters.json', 'w') as fp:
+        json.dump(parameters, fp)
+
+    for keys, par in parameters.items():
+        print(f'{keys}: {par}')
+    
     start = time.time()
-    with Pool(min(n_runs, n_cores)) as p:
-        x = p.map(main, range(n_runs))
+    for run in range(n_runs):
+        if run % 10 == 0:
+            middle = time.time() - start
+            print(f'Run: {run}/{n_runs} - took {middle} seconds')
+        main(run)
     end = time.time()
     elapsed = end-start
-    y = np.mean(np.array(x), axis=0)
     print(f'Total time elapsed: {elapsed} seconds.')
-    np.savetxt('multiple.dat', x)
