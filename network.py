@@ -1,12 +1,21 @@
 """
-Week 10
+Term 2 Week 1
 
-Ray & Xietao
+Authors: Ray & Xietao
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import time
+import os
+import json
+
+# Folder to save results. Set to 0 for same workspace.
+folder_path = 0
+# Obtain current time to automatically save different results
+unix_time = time.time()
+print(f'Current time: {unix_time}')
 
 """
 Parameters.
@@ -32,12 +41,12 @@ motors: motors initial condition w.r.t the rods, enter the full matrix.
 
 numberOfRods = 201
 length = np.ones(numberOfRods)*1000
-velocity_d = 0.01
-velocity_p = 1
+velocity_d = 10
+velocity_p = 2
 seed = 1
 makeAnimation = False
-repeatedSystems = True
-numberOfRepetitions = 50
+repeatedSystems = False
+numberOfRepetitions = 1
 # Don't change these
 np.random.seed(seed)
 random.seed(seed)
@@ -46,11 +55,27 @@ seqUpdate = 2
 diffSampling = 1
 persSample = 1
 activeSystem = False
-allowMotorCrossing = False
-finalTime = 1500
+allowMotorCrossing = True
+finalTime = 4000
 recordTime = 2
 rangeOfDetection = 3000
 motors = np.random.rand(numberOfRods, 2)*1000
+
+# Format parameters
+parameters = {
+    "vp": velocity_p,
+    "vd": velocity_d,
+    "seed": seed,
+    "seqUpdate": seqUpdate,
+    "diffSampling": diffSampling,
+    "persSampling": persSample,
+    "active": activeSystem,
+    "allowCrossing": allowMotorCrossing,
+    "finalTime": finalTime,
+    "recordTime": recordTime,
+    "rangeOfDetection": rangeOfDetection,
+    "motors": "random"
+}
 
 def RodsArray(Rposition, Mposition, length, numberOfRods):
 
@@ -243,30 +268,66 @@ def plotLengthEvolution(lengths):
     plt.ylabel('Rod length (nm)')
     #plt.show()
 
+def plotCom(com):
+
+    plt.plot(np.linspace(0, com.size, com.size), com)
+    plt.title('Center of mass evolution')
+    plt.xlabel('Time step (ns)')
+    plt.ylabel('Center of mass position (nm)')
+    #plt.show()
+
+def center_of_mass(rods, motors, ratio, numberOfRods):
+        com = 0
+        motorPos = calculateMotorPositions(rods, motors, numberOfRods)
+        total_mass = numberOfRods + ratio*numberOfRods
+        for i in range(numberOfRods):
+            com += ratio * 0.5 *(rods[i, 0] + (rods[i, 0]+rods[i, 1]))/total_mass
+            com += motorPos[i]/total_mass 
+        return com
+
 rods = np.zeros((numberOfRods, 2))
 rods = RodsArray(rods, motors, length, numberOfRods)
 lengthArray = np.zeros(int(finalTime/recordTime))
+comArray = np.zeros(int(finalTime/recordTime))
 
+start = time.time()
 for tstep in range(0, int(finalTime/recordTime)):
 
     rods, motors = randwalk(recordTime, rods, motors, numberOfRods, velocity_p, velocity_d)
     lengthArray[tstep] = systemLength(rods, numberOfRods)
+    comArray[tstep] = center_of_mass(rods, motors, 3, numberOfRods)
     if makeAnimation == True:
         plotSystem(rods, motors, numberOfRods, 10)
-
+end = time.time()
+print(end-start)
 plt.show()
-plotLengthEvolution(lengthArray)
+#plotLengthEvolution(lengthArray)
+plotCom(comArray)
 if repeatedSystems == True:
     lengthFinal, lengths, motors_all = multipleSimulations(numberOfRepetitions, length, numberOfRods, finalTime, recordTime, False)
 plt.show()
 
+# Create folder for copies
+if folder_path == 0:
+    folder_path = os.getcwd()
+folder = os.path.join(folder_path, str(unix_time))
+os.mkdir(folder)
 # Save to files, use graphs jupyter notebook to plot these
 np.savetxt('rods.dat', rods)
 np.savetxt('motors.dat', motors)
+# --- Copy
+with open(f'{folder}\\parameters.json', 'w') as fp:
+    json.dump(parameters, fp)
+np.savetxt(f'{folder}\\rods-{unix_time}.dat', rods)
+np.savetxt(f'{folder}\\motors-{unix_time}.dat', motors)
 if repeatedSystems == True:
     np.savetxt('length_final.dat', lengthFinal)
     np.savetxt('length_all.dat', lengths)
     np.savetxt('motors_multiple.dat', motors_all)
+    # --- Copy
+    np.savetxt(f'{folder}\\length_final-{unix_time}.dat', lengthFinal)
+    np.savetxt(f'{folder}\\length_all-{unix_time}.dat', lengths)
+    np.savetxt(f'{folder}\\motors_multiple-{unix_time}.dat', motors_all)
 
 """
 y = multipleSimulsSame(0, 20, 80, finalTime, recordTime, 990, rods, motors)
