@@ -34,10 +34,10 @@ def main(run_id):
     n_rows = 3
     length = 1000
     velocity_d = 1
-    velocity_p = 1
+    velocity_p = 0.75
     seed = 1
-    makeAnimation = True
-    finalTime = 8000
+    makeAnimation = False
+    finalTime = 12000
     recordTime = 1
     motor_scale = 500
     threshold = -1
