@@ -204,7 +204,7 @@ def main(run_id, folder, parameters):
                         Force += rod.get_pluspos()[0] - rodsinitp
                     elif rod.get_pluspos()[0] < L and rod.get_minuspos()[0] > L:
                         Force += rod.get_minuspos()[0] - rodsinitm
-        return rods, motors,Force    
+        return rods, motors, Force/len(rods.values())  
                 
     def simulate(rods, motors, n, m, L, timesteps):
         Forcecount = np.zeros(timesteps)

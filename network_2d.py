@@ -33,9 +33,9 @@ def main(run_id):
     n_cols = 3
     n_rows = 3
     length = 1000
-    velocity_d = 1
-    velocity_p = 0.75
-    seed = 1
+    velocity_d = 5
+    velocity_p = 1
+    seed = 2
     makeAnimation = False
     finalTime = 12000
     recordTime = 1

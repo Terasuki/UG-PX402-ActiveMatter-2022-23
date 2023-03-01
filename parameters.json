@@ -10,5 +10,5 @@
  "motor_scale": 500, 
  "threshold": -1, 
  "ratio": 0, 
- "polarity": 0,
+ "polarity": 1,
  "L": 500}
