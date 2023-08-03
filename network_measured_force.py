@@ -1,21 +1,12 @@
 """
-Term 2 Week 1
+Week 10
 
-Authors: Ray & Xietao
+Ray & Xietao
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-import time
-import os
-import json
-
-# Folder to save results. Set to 0 for same workspace.
-folder_path = 0
-# Obtain current time to automatically save different results
-unix_time = time.time()
-print(f'Current time: {unix_time}')
 
 """
 Parameters.
@@ -33,19 +24,18 @@ diffSampling: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
 persSample: 0 is constant, 1 for uniformly distribution, 2 Gaussian.
 activeSystem: set True for active persistance speed, set False for drift in one direction.
 allowMotorCrossing: set True to allow motor crossing.
-finalTime: number of timesteps to be considered. (in ns/2)
+finalTime: number of timesteps to be considered.
 recordTime: number of timesteps before each recording. (in ns)
-rangeOfDetection: if activeSystem is True then this is the radius of detection for the system. (in nm)
 motors: motors initial condition w.r.t the rods, enter the full matrix.
 """
 
-numberOfRods = 201
+numberOfRods = 21
 length = np.ones(numberOfRods)*1000
-velocity_d = 1000
-velocity_p = 0.01
+velocity_d = 10
+velocity_p = 1
 seed = 1
 makeAnimation = False
-repeatedSystems = True
+repeatedSystems = False
 numberOfRepetitions = 50
 # Don't change these
 np.random.seed(seed)
@@ -54,28 +44,15 @@ random.seed(seed)
 seqUpdate = 2
 diffSampling = 1
 persSample = 1
-activeSystem = False
-allowMotorCrossing = False
-finalTime = 12000
+activeSystem = True
+allowMotorCrossing = True
+finalTime = 8000
 recordTime = 2
-rangeOfDetection = 3000
+rangeOfDetection = 0
+rods = np.random.rand(numberOfRods, 2)*1000
+
 motors = np.random.rand(numberOfRods, 2)*1000
 
-# Format parameters
-parameters = {
-    "vp": velocity_p,
-    "vd": velocity_d,
-    "seed": seed,
-    "seqUpdate": seqUpdate,
-    "diffSampling": diffSampling,
-    "persSampling": persSample,
-    "active": activeSystem,
-    "allowCrossing": allowMotorCrossing,
-    "finalTime": finalTime,
-    "recordTime": recordTime,
-    "rangeOfDetection": rangeOfDetection,
-    "motors": "random"
-}
 
 def RodsArray(Rposition, Mposition, length, numberOfRods):
 
@@ -90,6 +67,7 @@ def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvel
     # random walk with velocity v_d and directional movement with v_p 
     v_p = pervelo
     v_d = diffvelo
+    velocity_count = np.zeros(numberofsteps)
     for _ in range(0, numberofsteps): 
         order = list(range(0, -numberOfRods, -1))
         if seqUpdate == 2:
@@ -128,7 +106,7 @@ def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvel
                 else:
                     v_p = 0
 
-            if dice1 < 0.5 : #random walk to the right
+            if dice1 < 0.5 : #random walk on the top rod
                 Mposition[i, 0] += v_p + v_d
                 if allowMotorCrossing:
                     if (0 >= Mposition[i, 0] or  Mposition[i, 0] >= Rposition[i, 1]):
@@ -166,9 +144,24 @@ def randwalk(numberofsteps, Rposition, Mposition, numberOfRods, pervelo, diffvel
                         Mposition[i, 1] -= -v_p - v_d
             else:
                 pass
-        Rposition[1:, 0] = (Mposition[:-1, 0] - Mposition[:-1, 1]).cumsum()
+        center_velocity = np.sum((Mposition[:-1, 0] - Mposition[:-1, 1]).cumsum() - Rposition[1:, 0])/2
+        velocity_count[_] = center_velocity
+        Rposition[1:, 0] = (Mposition[:-1, 0] - Mposition[:-1, 1]).cumsum()   
+    return Rposition, Mposition, velocity_count
 
-    return Rposition, Mposition
+rods = RodsArray(rods, motors, length, numberOfRods)
+plt.title("Force of the whole system")
+plt.xlabel("time/$\mu$s")
+plt.ylabel("Force/$\mu$N")
+Force = randwalk(4000, rods, motors, numberOfRods, velocity_p, velocity_d)[2][1:]
+plt.plot(np.linspace(0, 4000, 3999), Force)
+plt.show()
+np.savetxt('force.dat', Force)
+
+#momentum = np.sum(Force)
+#print("When v_p =",velocity_p,",v_D =",velocity_d,",The total momentum of the system is", momentum)
+
+
 
 def calculateMotorPositions(RodsMatrix, MotorMatrix, numberOfMotors):
 
@@ -204,7 +197,7 @@ def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, re
     "Execute simulations."
     for simul in range(0, numberOfSimulations):
         rods = np.zeros((numberOfRods, 2))
-        motors = seeds[simul].random((numberOfRods, 2))*length[0]
+        motors = seeds[simul].random((numberOfRods, 2))
         rods = RodsArray(rods, motors, length, numberOfRods)
 
         for tstep in range(0, int(finalTime/recordTime)):
@@ -215,7 +208,7 @@ def multipleSimulations(numberOfSimulations, length, numberOfRods, finalTime, re
             plt.title('Rod length evolution')
             plt.xlabel('Time step')
             plt.ylabel('Rod length')
-        if simul % 5 == 0:
+        if simul % 100 == 0:
             print(f'Currently {simul}/{numberOfSimulations}')
 
         finalLength[simul] = lengthArray[-1]
@@ -268,66 +261,30 @@ def plotLengthEvolution(lengths):
     plt.ylabel('Rod length (nm)')
     #plt.show()
 
-def plotCom(com):
-
-    plt.plot(np.linspace(0, com.size, com.size), com)
-    plt.title('Center of mass evolution')
-    plt.xlabel('Time step (ns)')
-    plt.ylabel('Center of mass position (nm)')
-    #plt.show()
-
-def center_of_mass(rods, motors, ratio, numberOfRods):
-        com = 0
-        motorPos = calculateMotorPositions(rods, motors, numberOfRods)
-        total_mass = numberOfRods + ratio*numberOfRods
-        for i in range(numberOfRods):
-            com += ratio * 0.5 *(rods[i, 0] + (rods[i, 0]+rods[i, 1]))/total_mass
-            com += motorPos[i]/total_mass 
-        return com
-
 rods = np.zeros((numberOfRods, 2))
 rods = RodsArray(rods, motors, length, numberOfRods)
 lengthArray = np.zeros(int(finalTime/recordTime))
-comArray = np.zeros(int(finalTime/recordTime))
 
-start = time.time()
 for tstep in range(0, int(finalTime/recordTime)):
 
-    rods, motors = randwalk(recordTime, rods, motors, numberOfRods, velocity_p, velocity_d)
+    rods, motors, Force = randwalk(recordTime, rods, motors, numberOfRods, velocity_p, velocity_d)
     lengthArray[tstep] = systemLength(rods, numberOfRods)
-    comArray[tstep] = center_of_mass(rods, motors, 3, numberOfRods)
     if makeAnimation == True:
         plotSystem(rods, motors, numberOfRods, 10)
-end = time.time()
-print(end-start)
+
 plt.show()
-#plotLengthEvolution(lengthArray)
-plotCom(comArray)
+plotLengthEvolution(lengthArray)
 if repeatedSystems == True:
     lengthFinal, lengths, motors_all = multipleSimulations(numberOfRepetitions, length, numberOfRods, finalTime, recordTime, False)
 plt.show()
 
-# Create folder for copies
-if folder_path == 0:
-    folder_path = os.getcwd()
-folder = os.path.join(folder_path, str(unix_time))
-os.mkdir(folder)
 # Save to files, use graphs jupyter notebook to plot these
 np.savetxt('rods.dat', rods)
 np.savetxt('motors.dat', motors)
-# --- Copy
-with open(f'{folder}\\parameters.json', 'w') as fp:
-    json.dump(parameters, fp)
-np.savetxt(f'{folder}\\rods-{unix_time}.dat', rods)
-np.savetxt(f'{folder}\\motors-{unix_time}.dat', motors)
 if repeatedSystems == True:
     np.savetxt('length_final.dat', lengthFinal)
     np.savetxt('length_all.dat', lengths)
     np.savetxt('motors_multiple.dat', motors_all)
-    # --- Copy
-    np.savetxt(f'{folder}\\length_final-{unix_time}.dat', lengthFinal)
-    np.savetxt(f'{folder}\\length_all-{unix_time}.dat', lengths)
-    np.savetxt(f'{folder}\\motors_multiple-{unix_time}.dat', motors_all)
 
 """
 y = multipleSimulsSame(0, 20, 80, finalTime, recordTime, 990, rods, motors)

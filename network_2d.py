@@ -33,15 +33,15 @@ def main(run_id):
     n_cols = 3
     n_rows = 3
     length = 1000
-    velocity_d = 5
-    velocity_p = 1
+    velocity_d = 1
+    velocity_p = 4
     seed = 2
-    makeAnimation = False
-    finalTime = 12000
+    makeAnimation = True
+    finalTime = 1000
     recordTime = 1
     motor_scale = 500
     threshold = -1
-    polarity = 0
+    polarity = 0.5
     ratio = 0
     relatives = False
     scaling = False
@@ -291,13 +291,12 @@ def main(run_id):
                 continue
             plt.clf()
             # Draw CoM
-            plt.scatter(com_over_time[timestep][0], com_over_time[timestep][1], marker='d')
+            #plt.scatter(com_over_time[timestep][0], com_over_time[timestep][1], marker='d')
 
             # Draw the rods
             for rod in rods.values():
                 drawArrow(rod.get_pluspos(), rod.get_minuspos())
 
-            plt.axvline(x = 500, color = 'b', label = 'axvline - full height')
             # Draw the motors
             for motor in motors.values():
                 plt.scatter(motor.get_position()[0], motor.get_position()[1])  
